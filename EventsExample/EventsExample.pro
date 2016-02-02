@@ -13,10 +13,9 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
     okienko.cpp
 
-HEADERS  += mainwindow.h \
+HEADERS  += \
     colorevent.h \
     okienko.h \
     mousepresseater.h
