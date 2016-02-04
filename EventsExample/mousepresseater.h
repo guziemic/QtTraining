@@ -13,7 +13,8 @@ public:
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) {
-        if (event && event->type() == QEvent::MouseButtonPress) {
+        if (event && (event->type() == QEvent::MouseButtonPress
+                  || event->type() == QEvent::MouseButtonDblClick)) {
             return true;
         }
 

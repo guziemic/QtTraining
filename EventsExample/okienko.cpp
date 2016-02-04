@@ -29,8 +29,8 @@ okienko::okienko(QWidget *parent)
     layout->addWidget(button2);
     setLayout(layout);
 
-//    setMinimumWidth(400);
-//    setMinimumHeight(300);
+    setMinimumWidth(400);
+    setMinimumHeight(300);
 
     connect(m_pushButton1, &QPushButton::clicked, this, &okienko::sendPostedEvent);
     connect(m_pushButton2, &QPushButton::clicked, this, &okienko::sendEventNormal);
@@ -49,9 +49,10 @@ void okienko::doRemoveEventFilter() {
 }
 
 bool okienko::event(QEvent * event) {
-    qDebug() << "event" << event->type() << this->thread()->currentThreadId();;
+//    qDebug() << "event" << event->type() << this->thread()->currentThreadId();;
 
     if (event->type() == 1012) {
+        qDebug() << "Color event" << event->type() << this->thread()->currentThreadId();;
         ColorEvent *colorEv = static_cast<ColorEvent *>(event);
         QPalette pal(palette());
         pal.setColor(QPalette::Background, colorEv->getColor());
@@ -65,11 +66,6 @@ bool okienko::event(QEvent * event) {
 
 void okienko::paintEvent(QPaintEvent * event) {
     qDebug() << "       paint event" << event->type() << this->thread()->currentThreadId();
-    static int x = 0;
-//    if (x%2 && event) {
-        event->setAccepted(false);
-//    }
-    ++x;
 }
 
 void okienko::mouseDoubleClickEvent(QMouseEvent *event) {
@@ -81,10 +77,10 @@ void okienko::mouseDoubleClickEvent(QMouseEvent *event) {
 void okienko::sendPostedEvent() {
     qDebug() << "sendPostedEvent" << this->thread()->currentThreadId();
 
-    ColorEvent *event = new ColorEvent(Qt::cyan);
+//    ColorEvent *event = new ColorEvent(Qt::cyan);
     ColorEvent *event2 = new ColorEvent(Qt::green);
     QCoreApplication::postEvent(this, event2); //green
-    QCoreApplication::postEvent(this, event, Qt::HighEventPriority); //cyan
+//    QCoreApplication::postEvent(this, event, Qt::HighEventPriority); //cyan
     qDebug() << "Event post was send";
 }
 
