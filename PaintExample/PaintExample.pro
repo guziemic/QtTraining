@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2015-12-17T16:01:14
+# Project created by QtCreator 2016-02-17T14:16:38
 #
 #-------------------------------------------------
 
@@ -8,16 +8,15 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = EventsExample
+TARGET = PaintExample
 TEMPLATE = app
 
 
 SOURCES += main.cpp\
-    okienko.cpp
-#    watek.cpp
+        mainwindow.cpp \
+    paintwidget.cpp \
+    piewidget.cpp
 
-HEADERS  += \
-    colorevent.h \
-    okienko.h \
-    mousepresseater.h
-#    watek.h
+HEADERS  += mainwindow.h \
+    paintwidget.h \
+    piewidget.h

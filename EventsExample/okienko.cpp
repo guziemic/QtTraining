@@ -65,7 +65,7 @@ bool okienko::event(QEvent * event) {
 }
 
 void okienko::paintEvent(QPaintEvent * event) {
-    qDebug() << "       paint event" << event->type() << this->thread()->currentThreadId();
+//    qDebug() << "       paint event" << event->type() << this->thread()->currentThreadId();
 }
 
 void okienko::mouseDoubleClickEvent(QMouseEvent *event) {
@@ -77,10 +77,8 @@ void okienko::mouseDoubleClickEvent(QMouseEvent *event) {
 void okienko::sendPostedEvent() {
     qDebug() << "sendPostedEvent" << this->thread()->currentThreadId();
 
-//    ColorEvent *event = new ColorEvent(Qt::cyan);
     ColorEvent *event2 = new ColorEvent(Qt::green);
     QCoreApplication::postEvent(this, event2); //green
-//    QCoreApplication::postEvent(this, event, Qt::HighEventPriority); //cyan
     qDebug() << "Event post was send";
 }
 

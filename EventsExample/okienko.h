@@ -5,6 +5,7 @@
 
 class QPushButton;
 class MousePressEater;
+class Watek;
 
 class okienko : public QWidget
 {
@@ -29,6 +30,7 @@ private:
     QPushButton * m_pushButton1;
     QPushButton * m_pushButton2;
     MousePressEater * m_eater;
+    Watek *m_watek;
 };
 
 #endif // OKIENKO_H

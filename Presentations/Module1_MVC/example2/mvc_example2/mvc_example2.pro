@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2015-12-17T16:01:14
+# Project created by QtCreator 2016-03-01T09:09:01
 #
 #-------------------------------------------------
 
@@ -8,16 +8,12 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = EventsExample
+TARGET = mvc_example2
 TEMPLATE = app
 
 
-SOURCES += main.cpp\
-    okienko.cpp
-#    watek.cpp
+SOURCES += main.cpp \
+    handler.cpp
 
 HEADERS  += \
-    colorevent.h \
-    okienko.h \
-    mousepresseater.h
-#    watek.h
+    handler.h
