@@ -16,13 +16,11 @@ void MySortFilterProxyModel::setFilterMaximumDate(const QDate &date) {
 }
 
 bool MySortFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex &source_parent) const {
-//    QModelIndex index0 = sourceModel()->index(source_row, 0, source_parent);
     QModelIndex index1 = sourceModel()->index(source_row, 2, source_parent);
     QModelIndex index2 = sourceModel()->index(source_row, 3, source_parent);
 
-    return (//sourceModel()->data(index0).toString().contains(filterRegExp()) ||
-            sourceModel()->data(index1).toString().contains(filterRegExp()))
-            && dateInRange(sourceModel()->data(index2).toDate());
+    return sourceModel()->data(index1).toString().contains(filterRegExp())
+           && dateInRange(sourceModel()->data(index2).toDate());
 }
 
 // aim is to sort senders by their email adresses (field in database contains Name <address@.com> as string
