@@ -32,7 +32,7 @@ private slots:
 #endif
 
 private:
-    QFile *m_openFileForWrite(const QString &fileName);
+    QFile *openFileForWrite(const QString &fileName);
 
     QLabel *m_statusLabel;
     QLineEdit *m_urlLineEdit;

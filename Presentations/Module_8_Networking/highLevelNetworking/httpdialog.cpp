@@ -69,35 +69,175 @@ HttpDialog::~HttpDialog()
 }
 
 void HttpDialog::startRequest(const QUrl &requestedUrl) {
+    m_url = requestedUrl;
+    m_httpRequestAborted = false;
 
+    m_reply = m_qnam.get(QNetworkRequest(m_url));
+    connect(m_reply, &QNetworkReply::finished, this, &HttpDialog::httpFinished);
+    connect(m_reply, &QIODevice::readyRead, this, &HttpDialog::httpReadyRead);
+
+    //progress indicator ?
+
+    m_statusLabel->setText(tr("Downloading %1...").arg(m_url.toString()));
 }
 
 void HttpDialog::downloadFile() {
+    const QString urlSpec = m_urlLineEdit->text().trimmed();
+    if (urlSpec.isEmpty()) {
+        return;
+    }
 
+    const QUrl newUrl = QUrl::fromUserInput(urlSpec);
+    if (!newUrl.isValid()) {
+        QMessageBox::information(this, tr("Error"),
+                                 tr("Invalid URL %1: %2").arg(urlSpec, newUrl.errorString()));
+        return;
+    }
+
+    QString fileName = newUrl.fileName();
+    if (fileName.isEmpty()) {
+        fileName = m_defaultFileLineEdit->text().trimmed();
+    }
+
+    if (fileName.isEmpty()) {
+        fileName = defaultFileName;
+    }
+
+    QString downloadDirectory = QDir::cleanPath(m_downloadDirectoryLineEdit->text().trimmed());
+    if (!downloadDirectory.isEmpty() && QFileInfo(downloadDirectory).isDir()) {
+        fileName.prepend(downloadDirectory + '/');
+    }
+
+    if (QFile::exists(fileName)) {
+        if (QMessageBox::question(this, tr("Overwrite existing file"),
+                                  tr("There already exists a file called %1 in the current directory. Overwrite?")
+                                  .arg(fileName),
+                                  QMessageBox::Yes|QMessageBox::No, QMessageBox::No) == QMessageBox::No) {
+            return;
+        }
+
+        QFile::remove(fileName);
+    }
+
+    m_file = openFileForWrite(fileName);
+
+    if (!m_file) {
+        return;
+    }
+
+    m_downloadButton->setEnabled(false);
+
+    //schedule request
+    startRequest(newUrl);
 }
 
 void HttpDialog::cancelDownload() {
-
+    m_statusLabel->setText(tr("Download canceled"));
+    m_httpRequestAborted = true;
+    m_reply->abort();
+    m_downloadButton->setEnabled(true);
 }
 
 void HttpDialog::httpFinished() {
+    QFileInfo fi;
+    if (m_file) {
+        fi.setFile(m_file->fileName());
+        m_file->close();
+        delete m_file;
+        m_file = Q_NULLPTR;
+    }
 
+    if (m_httpRequestAborted) {
+        m_reply->deleteLater();
+        m_reply = Q_NULLPTR;
+        return;
+    }
+
+    if (m_reply->error()) {
+        QFile::remove(fi.absoluteFilePath());
+        m_statusLabel->setText(tr("Download failed:\n%1").arg(m_reply->errorString()));
+        m_downloadButton->setEnabled(true);
+        m_reply->deleteLater();
+        m_reply = Q_NULLPTR;
+        return;
+    }
+
+    const QVariant rediractionTarget = m_reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+    m_reply->deleteLater();
+    m_reply = Q_NULLPTR;
+
+    if (!rediractionTarget.isNull()) {
+        const QUrl redirectedUrl = m_url.resolved(rediractionTarget.toUrl());
+        if (QMessageBox::question(this, tr("Redirect")
+                , tr("Redirect to %1 ?").arg(redirectedUrl.toString())
+                , QMessageBox::Yes | QMessageBox::No) == QMessageBox::No ) {
+            m_downloadButton->setEnabled(true);
+            return;
+        }
+
+        m_file = openFileForWrite(fi.absolutePath());
+        if (!m_file) {
+            m_downloadButton->setEnabled(true);
+            return;
+        }
+
+        startRequest(redirectedUrl);
+        return;
+    }
+
+    m_statusLabel->setText(tr("Downloaded %1 bytes to %2\nin\n%3")
+                           .arg(fi.size()).arg(fi.fileName()).arg(QDir::toNativeSeparators(fi.absolutePath())));
+    if (m_lunchCheckBox->isChecked()) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(fi.absoluteFilePath()));
+    }
+
+    m_downloadButton->setEnabled(true);
 }
 
 void HttpDialog::httpReadyRead() {
-
+    // this slot gets called every time the QNetworkReply has new data.
+    // We read all of its new data and write it into the file.
+    // That way we use less RAM than when reading it at the finished()
+    // signal of the QNetworkReply
+    if (m_file) {
+        m_file->write(m_reply->readAll());
+    }
 }
 
 void HttpDialog::enableDownloadButton() {
-
+    m_downloadButton->setEnabled(!m_urlLineEdit->text().isEmpty());
 }
 
 void HttpDialog::slotAuthenticationRequired(QNetworkReply *reply, QAuthenticator *authenticator) {
-
+    qDebug() << "Not implemented";
 }
 
 #ifndef QT_NO_SSL
 void HttpDialog::sslErrors(QNetworkReply *reply, const QList<QSslError> &errors) {
+    Q_UNUSED(reply);
+    QString errorString;
+    foreach (const QSslError &error, errors) {
+        if (!errorString.isEmpty())
+            errorString += '\n';
+        errorString += error.errorString();
+    }
 
+    if (QMessageBox::warning(this, tr("SSL Errors"),
+                             tr("One or more SSL errors has occurred:\n%1").arg(errorString),
+                             QMessageBox::Ignore | QMessageBox::Abort) == QMessageBox::Ignore) {
+        m_reply->ignoreSslErrors();
+    }
 }
 #endif
+
+QFile *HttpDialog::openFileForWrite(const QString &fileName) {
+    QScopedPointer<QFile> file(new QFile(fileName));
+    if (!file->open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, tr("Error"),
+                                 tr("Unable to save file %1: %2")
+                                    .arg(QDir::toNativeSeparators(fileName), file->errorString()));
+        return Q_NULLPTR;
+    }
+
+    return file.take();
+}
