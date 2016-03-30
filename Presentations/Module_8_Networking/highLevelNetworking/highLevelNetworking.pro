@@ -16,3 +16,5 @@ SOURCES += main.cpp\
         httpdialog.cpp
 
 HEADERS  += httpdialog.h
+
+FORMS += authenticationdialog.ui

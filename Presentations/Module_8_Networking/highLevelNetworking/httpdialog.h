@@ -9,6 +9,7 @@ class QFile;
 class QLabel;
 class QLineEdit;
 class QCheckBox;
+class QProgressBar;
 
 class HttpDialog : public QDialog
 {
@@ -30,6 +31,7 @@ private slots:
 #ifndef QT_NO_SSL
     void sslErrors(QNetworkReply *reply, const QList<QSslError> &errors);
 #endif
+    void networkReplyProgress(qint64 bytesRead, qint64 bytesTotal);
 
 private:
     QFile *openFileForWrite(const QString &fileName);
@@ -37,17 +39,17 @@ private:
     QLabel *m_statusLabel;
     QLineEdit *m_urlLineEdit;
     QPushButton *m_downloadButton;
+    QPushButton *m_cancelButton;
     QCheckBox *m_lunchCheckBox;
     QLineEdit *m_defaultFileLineEdit;
     QLineEdit *m_downloadDirectoryLineEdit;
+    QProgressBar *m_progressBar;
 
     QUrl m_url;
     QNetworkAccessManager m_qnam;
     QNetworkReply *m_reply;
     QFile *m_file;
     bool m_httpRequestAborted;
-
-
 };
 
 #endif // HTTPDIALOG_H

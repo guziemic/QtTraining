@@ -1,4 +1,5 @@
 #include "httpdialog.h"
+#include "ui_authenticationdialog.h"
 
 #include <QtWidgets>
 #include <QtNetwork>
@@ -11,9 +12,11 @@ HttpDialog::HttpDialog(QWidget *parent)
     , m_statusLabel(new QLabel(tr("Please enter the URL \n")))
     , m_urlLineEdit(new QLineEdit(defaultUrl))
     , m_downloadButton(new QPushButton(tr("Download")))
+    , m_cancelButton(new QPushButton(tr("Cancel")))
     , m_lunchCheckBox(new QCheckBox("Lunch file"))
     , m_defaultFileLineEdit(new QLineEdit(defaultFileName))
     , m_downloadDirectoryLineEdit(new QLineEdit)
+    , m_progressBar(new QProgressBar)
     , m_reply(Q_NULLPTR)
     , m_file(Q_NULLPTR)
     , m_httpRequestAborted(false)
@@ -23,6 +26,7 @@ HttpDialog::HttpDialog(QWidget *parent)
     connect(&m_qnam, &QNetworkAccessManager::authenticationRequired,
             this, &HttpDialog::slotAuthenticationRequired);
 #ifndef QT_NO_SSL
+    qDebug() << "SSL is defined";
     connect(&m_qnam, &QNetworkAccessManager::sslErrors,
             this, &HttpDialog::sslErrors);
 #endif
@@ -58,25 +62,32 @@ HttpDialog::HttpDialog(QWidget *parent)
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox;
     buttonBox->addButton(m_downloadButton, QDialogButtonBox::ActionRole);
+    buttonBox->addButton(m_cancelButton, QDialogButtonBox::ActionRole);
+    m_cancelButton->setEnabled(false);
     buttonBox->addButton(quitButton, QDialogButtonBox::RejectRole);
     mainLayout->addWidget(buttonBox);
+    mainLayout->addWidget(m_progressBar);
+    m_progressBar->setMinimum(0);
+    m_progressBar->setValue(0);
 
+    connect(m_cancelButton, &QAbstractButton::clicked, this, &HttpDialog::cancelDownload);
     m_urlLineEdit->setFocus();
 }
 
-HttpDialog::~HttpDialog()
-{
+HttpDialog::~HttpDialog() {
 }
 
 void HttpDialog::startRequest(const QUrl &requestedUrl) {
+    m_progressBar->setMaximum(0);
+    m_progressBar->setValue(0);
+
     m_url = requestedUrl;
     m_httpRequestAborted = false;
 
     m_reply = m_qnam.get(QNetworkRequest(m_url));
     connect(m_reply, &QNetworkReply::finished, this, &HttpDialog::httpFinished);
     connect(m_reply, &QIODevice::readyRead, this, &HttpDialog::httpReadyRead);
-
-    //progress indicator ?
+    connect(m_reply, &QNetworkReply::downloadProgress, this, &HttpDialog::networkReplyProgress);
 
     m_statusLabel->setText(tr("Downloading %1...").arg(m_url.toString()));
 }
@@ -126,6 +137,7 @@ void HttpDialog::downloadFile() {
     }
 
     m_downloadButton->setEnabled(false);
+    m_cancelButton->setEnabled(true);
 
     //schedule request
     startRequest(newUrl);
@@ -136,6 +148,7 @@ void HttpDialog::cancelDownload() {
     m_httpRequestAborted = true;
     m_reply->abort();
     m_downloadButton->setEnabled(true);
+    m_cancelButton->setEnabled(false);
 }
 
 void HttpDialog::httpFinished() {
@@ -157,6 +170,7 @@ void HttpDialog::httpFinished() {
         QFile::remove(fi.absoluteFilePath());
         m_statusLabel->setText(tr("Download failed:\n%1").arg(m_reply->errorString()));
         m_downloadButton->setEnabled(true);
+        m_cancelButton->setEnabled(false);
         m_reply->deleteLater();
         m_reply = Q_NULLPTR;
         return;
@@ -172,12 +186,14 @@ void HttpDialog::httpFinished() {
                 , tr("Redirect to %1 ?").arg(redirectedUrl.toString())
                 , QMessageBox::Yes | QMessageBox::No) == QMessageBox::No ) {
             m_downloadButton->setEnabled(true);
+            m_cancelButton->setEnabled(false);
             return;
         }
 
         m_file = openFileForWrite(fi.absolutePath());
         if (!m_file) {
             m_downloadButton->setEnabled(true);
+            m_cancelButton->setEnabled(false);
             return;
         }
 
@@ -192,6 +208,7 @@ void HttpDialog::httpFinished() {
     }
 
     m_downloadButton->setEnabled(true);
+    m_cancelButton->setEnabled(false);
 }
 
 void HttpDialog::httpReadyRead() {
@@ -209,7 +226,21 @@ void HttpDialog::enableDownloadButton() {
 }
 
 void HttpDialog::slotAuthenticationRequired(QNetworkReply *reply, QAuthenticator *authenticator) {
-    qDebug() << "Not implemented";
+    QDialog authenticationDialog;
+    Ui::Dialog ui;
+    ui.setupUi(&authenticationDialog);
+    authenticationDialog.adjustSize();
+    ui.siteDescription->setText(tr("%1 at %2").arg(authenticator->realm(), m_url.host()));
+
+    // Did the URL have information? Fill the UI
+    // This is only relevant if the URL-supplied credentials were wrong
+    ui.userEdit->setText(m_url.userName());
+    ui.passwordEdit->setText(m_url.password());
+
+    if (authenticationDialog.exec() == QDialog::Accepted) {
+        authenticator->setUser(ui.userEdit->text());
+        authenticator->setPassword(ui.passwordEdit->text());
+    }
 }
 
 #ifndef QT_NO_SSL
@@ -229,6 +260,11 @@ void HttpDialog::sslErrors(QNetworkReply *reply, const QList<QSslError> &errors)
     }
 }
 #endif
+
+void HttpDialog::networkReplyProgress(qint64 bytesRead, qint64 bytesTotal) {
+    m_progressBar->setMaximum(bytesTotal);
+    m_progressBar->setValue(bytesRead);
+}
 
 QFile *HttpDialog::openFileForWrite(const QString &fileName) {
     QScopedPointer<QFile> file(new QFile(fileName));
